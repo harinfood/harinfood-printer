@@ -20,6 +20,7 @@ import java.net.URL;
 public class BellPlayer {
     private static final Object LOCK = new Object();
     private static MediaPlayer player;
+    private static Context volCtx; // dipakai untuk mengembalikan volume saat musik berhenti
 
     public static void play(final Context ctx) {
         final Context app = ctx.getApplicationContext();
@@ -46,6 +47,7 @@ public class BellPlayer {
             try { player.stop(); } catch (Exception ignored) {}
             try { player.release(); } catch (Exception ignored) {}
             player = null;
+            if (volCtx != null) VolumeBoost.release(volCtx);
         }
     }
 
@@ -75,6 +77,7 @@ public class BellPlayer {
 
     private static void playBlocking(Context c) {
         synchronized (LOCK) {
+            volCtx = c.getApplicationContext();
             if (player != null) { releaseLocked(); return; } // ditekan lagi saat berbunyi -> berhenti
             try {
                 MediaPlayer mp = new MediaPlayer();
@@ -90,6 +93,7 @@ public class BellPlayer {
                 mp.prepare();
                 mp.start();
                 player = mp;
+                VolumeBoost.acquire(volCtx); // volume 100% selama musik bel berbunyi
             } catch (Exception e) {
                 releaseLocked();
             }

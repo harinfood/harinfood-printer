@@ -290,6 +290,15 @@ public class MainActivity extends Activity {
         public void test() { BellPlayer.play(getApplicationContext()); }
     }
 
+    /** Jembatan JavaScript -> Android: naikkan volume ke 100% saat notifikasi web berbunyi. */
+    private class VolumeBridge {
+        @JavascriptInterface
+        public void boost(int holdMs) {
+            long ms = Math.max(1500L, Math.min((long) holdMs, 15000L));
+            VolumeBoost.boost(getApplicationContext(), ms);
+        }
+    }
+
     /** Jembatan JavaScript -> Android untuk GPS. */
     private class GpsBridge {
         @JavascriptInterface
@@ -700,6 +709,7 @@ public class MainActivity extends Activity {
         webView.addJavascriptInterface(new PrintBridge(), "HarinPrint");
         webView.addJavascriptInterface(new GpsBridge(), "HarinGps");
         webView.addJavascriptInterface(new BellBridge(), "HarinBell");
+        webView.addJavascriptInterface(new VolumeBridge(), "HarinVolume");
         if (prefs().getBoolean("bell_on", false)) startBellService();
         webView.addJavascriptInterface(new NativeBridge(webView), "HarinNative");
         webView.setDownloadListener(downloadListener(webView));
