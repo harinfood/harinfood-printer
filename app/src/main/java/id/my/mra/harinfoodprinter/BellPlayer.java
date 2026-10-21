@@ -15,7 +15,8 @@ import java.net.URL;
 /**
  * Memutar musik pembuka (musik yang sama dengan saat aplikasi dibuka) ketika tombol iTag ditekan.
  * Berkas MP3 diunduh sekali dari URL musik pembuka lalu disimpan di cache; kalau belum ada, dipakai nada notifikasi bawaan HP.
- * Menekan tombol lagi saat musik masih berbunyi = menghentikan musik.
+ * Setelah musik selesai, jam saat ini diucapkan lewat TTS (Bahasa Indonesia).
+ * Menekan tombol lagi saat musik masih berbunyi = menghentikan musik (tanpa ucapan jam).
  */
 public class BellPlayer {
     private static final Object LOCK = new Object();
@@ -88,8 +89,8 @@ public class BellPlayer {
                 mp.setWakeMode(c, PowerManager.PARTIAL_WAKE_LOCK); // tetap berbunyi walau layar mati
                 if (ensureDownloaded(c)) mp.setDataSource(musicFile(c).getAbsolutePath());
                 else mp.setDataSource(c, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION));
-                mp.setOnCompletionListener(m -> { synchronized (LOCK) { if (player == m) releaseLocked(); } });
-                mp.setOnErrorListener((m, what, extra) -> { synchronized (LOCK) { if (player == m) releaseLocked(); } return true; });
+                mp.setOnCompletionListener(m -> { synchronized (LOCK) { if (player == m) { JamBicara.speakNow(volCtx); releaseLocked(); } } });
+                mp.setOnErrorListener((m, what, extra) -> { synchronized (LOCK) { if (player == m) { JamBicara.speakNow(volCtx); releaseLocked(); } } return true; });
                 mp.prepare();
                 mp.start();
                 player = mp;
