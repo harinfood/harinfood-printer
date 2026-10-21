@@ -87,15 +87,30 @@ public final class JamBicara {
         }
     }
 
-    /** Contoh: "Sekarang pukul empat belas lewat tiga puluh lima menit". */
+    /**
+     * Format 12 jam, seperti cara orang mengucapkan jam:
+     * 10.42 -> "Jam sepuluh lebih empat puluh dua pagi"
+     * 13.05 -> "Jam satu lebih lima siang"
+     * 12.00 -> "Jam dua belas tepat siang"
+     */
     public static String kalimatJam() {
         Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jakarta"));
-        int jam = cal.get(Calendar.HOUR_OF_DAY);
+        int jam24 = cal.get(Calendar.HOUR_OF_DAY);
         int menit = cal.get(Calendar.MINUTE);
-        if (menit == 0) return "Sekarang pukul " + sebut(jam) + " tepat";
-        if (menit <= 30) return "Sekarang pukul " + sebut(jam) + " lewat " + sebut(menit) + " menit";
-        int jamBerikut = (jam + 1) % 24;
-        return "Sekarang pukul " + sebut(jamBerikut) + " kurang " + sebut(60 - menit) + " menit";
+        int jam12 = jam24 % 12;
+        if (jam12 == 0) jam12 = 12;
+        String periode = periode(jam24);
+        if (menit == 0) return "Jam " + sebut(jam12) + " tepat " + periode;
+        return "Jam " + sebut(jam12) + " lebih " + sebut(menit) + " " + periode;
+    }
+
+    /** Kata waktu harian berdasarkan jam 24 (0-23). */
+    static String periode(int jam24) {
+        if (jam24 < 4) return "dini hari";
+        if (jam24 < 11) return "pagi";
+        if (jam24 < 15) return "siang";
+        if (jam24 < 18) return "sore";
+        return "malam";
     }
 
     /** Angka 0-59 dalam kata Bahasa Indonesia. */
