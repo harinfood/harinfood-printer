@@ -89,7 +89,7 @@ public final class JamBicara {
 
     /**
      * Format 12 jam, seperti cara orang mengucapkan jam:
-     * 10.42 -> "Jam sepuluh lebih empat puluh dua pagi"
+     * 10.42 -> "Sekarang jam sepuluh lebih empat puluh dua pagi"
      * 13.05 -> "Jam satu lebih lima siang"
      * 12.00 -> "Jam dua belas tepat siang"
      */
@@ -100,8 +100,8 @@ public final class JamBicara {
         int jam12 = jam24 % 12;
         if (jam12 == 0) jam12 = 12;
         String periode = periode(jam24);
-        if (menit == 0) return "Jam " + sebut(jam12) + " tepat " + periode;
-        return "Jam " + sebut(jam12) + " lebih " + sebut(menit) + " " + periode;
+        if (menit == 0) return "Sekarang jam " + sebut(jam12) + " tepat " + periode;
+        return "Sekarang jam " + sebut(jam12) + " lebih " + sebut(menit) + " " + periode;
     }
 
     /** Kata waktu harian berdasarkan jam 24 (0-23). */
