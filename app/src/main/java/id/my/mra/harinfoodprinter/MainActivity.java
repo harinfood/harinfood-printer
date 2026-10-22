@@ -256,6 +256,7 @@ public class MainActivity extends Activity {
                 o.put("addr", p.getString("bell_addr", ""));
                 o.put("name", p.getString("bell_name", ""));
                 o.put("status", BellService.status);
+                o.put("speak", p.getString("bell_speak", "mp3_jam"));
                 o.put("running", BellService.running);
                 return o.toString();
             } catch (Exception e) { return "{}"; }
@@ -284,6 +285,12 @@ public class MainActivity extends Activity {
                 prefs().edit().putString("bell_music_url", nu).apply();
                 BellPlayer.invalidate(MainActivity.this);
             }
+        }
+
+        @JavascriptInterface
+        public void setSpeakMode(String mode) {
+            // "mp3_jam" = MP3 lalu jam; "jam" = jam saja
+            prefs().edit().putString("bell_speak", "jam".equals(mode) ? "jam" : "mp3_jam").apply();
         }
 
         @JavascriptInterface

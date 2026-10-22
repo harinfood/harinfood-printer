@@ -36,6 +36,9 @@ public class BellService extends Service {
     private static final int NOTIF_ID = 7102;
     private static final UUID CCCD = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
     private static final UUID SVC_FFE0 = UUID.fromString("0000ffe0-0000-1000-8000-00805f9b34fb");
+    // Link Loss (0x1803) / Alert Level (0x2A06): alarm iTag saat koneksi putus. Diset 0x00 = tidak berbunyi.
+    private static final UUID SVC_LINK_LOSS = UUID.fromString("00001803-0000-1000-8000-00805f9b34fb");
+    private static final UUID CHR_ALERT_LEVEL = UUID.fromString("00002a06-0000-1000-8000-00805f9b34fb");
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private BluetoothGatt gatt;
@@ -43,6 +46,7 @@ public class BellService extends Service {
     private boolean stopping = false;
     private long lastPress = 0;
     private final LinkedList<BluetoothGattCharacteristic> pendingEnable = new LinkedList<BluetoothGattCharacteristic>();
+    private boolean linkLossPending = false;
 
     @Override
     public IBinder onBind(Intent intent) { return null; }
@@ -124,6 +128,7 @@ public class BellService extends Service {
         } catch (Exception ignored) {}
         gatt = null;
         pendingEnable.clear();
+        linkLossPending = false;
     }
 
     private void connect() {
@@ -176,6 +181,21 @@ public class BellService extends Service {
         }
     }
 
+    /** Mematikan alarm iTag saat koneksi putus, supaya buzzer tidak berbunyi sendiri ketika di luar jangkauan. */
+    private boolean tulisLinkLossOff(BluetoothGatt g) {
+        try {
+            BluetoothGattService s = g.getService(SVC_LINK_LOSS);
+            if (s == null) return false;
+            BluetoothGattCharacteristic c = s.getCharacteristic(CHR_ALERT_LEVEL);
+            if (c == null) return false;
+            c.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+            c.setValue(new byte[]{0x00}); // 0x00 = tidak ada alarm
+            return g.writeCharacteristic(c);
+        } catch (SecurityException se) {
+            return false;
+        }
+    }
+
     private final BluetoothGattCallback callback = new BluetoothGattCallback() {
         @Override
         public void onConnectionStateChange(BluetoothGatt g, int st, int newState) {
@@ -205,7 +225,18 @@ public class BellService extends Service {
                 setStatus("Tersambung, tetapi perangkat ini tidak punya tombol yang bisa dibaca");
                 return;
             }
+            // Matikan alarm putus dulu; tombol diaktifkan setelah penulisan selesai (urutan GATT)
+            linkLossPending = tulisLinkLossOff(g);
+            if (linkLossPending) return;
             enableNext(g);
+        }
+
+        @Override
+        public void onCharacteristicWrite(BluetoothGatt g, BluetoothGattCharacteristic c, int st) {
+            if (linkLossPending) {
+                linkLossPending = false;
+                enableNext(g);
+            }
         }
 
         @Override

@@ -17,6 +17,7 @@ import java.net.URL;
  * Berkas MP3 diunduh sekali dari URL musik pembuka lalu disimpan di cache; kalau belum ada, dipakai nada notifikasi bawaan HP.
  * Setelah musik selesai, jam saat ini diucapkan lewat TTS (Bahasa Indonesia).
  * Menekan tombol lagi saat musik masih berbunyi = menghentikan musik (tanpa ucapan jam).
+ * Mode "jam saja" (pengaturan bell_speak = "jam"): tanpa MP3, langsung mengucapkan jam.
  */
 public class BellPlayer {
     private static final Object LOCK = new Object();
@@ -42,6 +43,11 @@ public class BellPlayer {
     }
 
     private static File musicFile(Context c) { return new File(c.getCacheDir(), "bell_music.mp3"); }
+
+    /** true = mode "jam saja" (tanpa MP3). Default: MP3 + jam. */
+    private static boolean modeJamSaja(Context c) {
+        return "jam".equals(c.getSharedPreferences("harin", Context.MODE_PRIVATE).getString("bell_speak", "mp3_jam"));
+    }
 
     private static void releaseLocked() {
         if (player != null) {
@@ -80,6 +86,7 @@ public class BellPlayer {
         synchronized (LOCK) {
             volCtx = c.getApplicationContext();
             if (player != null) { releaseLocked(); return; } // ditekan lagi saat berbunyi -> berhenti
+            if (modeJamSaja(c)) { JamBicara.speakNow(volCtx); return; } // mode "jam saja": langsung ucapkan jam
             try {
                 MediaPlayer mp = new MediaPlayer();
                 mp.setAudioAttributes(new AudioAttributes.Builder()
