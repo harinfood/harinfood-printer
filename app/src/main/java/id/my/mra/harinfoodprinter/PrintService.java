@@ -87,7 +87,7 @@ public class PrintService extends Service {
         open.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent pi = PendingIntent.getActivity(this, 0, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(this, CHANNEL) : new Notification.Builder(this);
-        b.setContentTitle("Harinfood Printer aktif")
+        b.setContentTitle("Harinfood Pos aktif")
          .setContentText(text)
          .setSmallIcon(android.R.drawable.ic_menu_info_details)
          .setContentIntent(pi)

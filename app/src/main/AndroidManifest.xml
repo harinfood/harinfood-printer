@@ -20,9 +20,9 @@
 
     <application
         android:allowBackup="false"
+        android:label="Harinfood Pos"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:label="Harinfood Printer"
         android:usesCleartextTraffic="false"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
 
