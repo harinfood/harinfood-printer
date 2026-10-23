@@ -41,6 +41,18 @@ public class BellService extends Service {
     private static final UUID CHR_ALERT_LEVEL = UUID.fromString("00002a06-0000-1000-8000-00805f9b34fb");
 
     private final Handler handler = new Handler(Looper.getMainLooper());
+
+    // Tekan 1x = MP3 + jam; tekan 2x (double klik) = jam saja
+    private static final long PANTULAN_MS = 250L;      // abaikan pantulan tombol
+    private static final long JENDELA_DOUBLE_MS = 450L; // selang maksimum untuk dianggap double klik
+    private int jumlahTekan = 0;
+    private final Runnable selesaiTekan = () -> {
+        int n = jumlahTekan;
+        jumlahTekan = 0;
+        boolean jamSaja = n >= 2;
+        setStatus(jamSaja ? "Tombol ditekan 2x → jam saja" : "Tombol ditekan 1x → MP3 + jam");
+        BellPlayer.onButton(getApplicationContext(), jamSaja);
+    };
     private BluetoothGatt gatt;
     private String addr = "";
     private boolean stopping = false;
@@ -247,11 +259,16 @@ public class BellService extends Service {
         @Override
         public void onCharacteristicChanged(BluetoothGatt g, BluetoothGattCharacteristic c) {
             long now = SystemClock.elapsedRealtime();
-            if (now - lastPress < 1200) return; // abaikan pantulan tombol
+            if (now - lastPress < PANTULAN_MS) return; // abaikan pantulan tombol
             lastPress = now;
             handler.post(() -> {
-                setStatus("Tombol ditekan → memutar musik");
-                BellPlayer.play(getApplicationContext());
+                jumlahTekan++;
+                handler.removeCallbacks(selesaiTekan);
+                if (jumlahTekan >= 2) {
+                    selesaiTekan.run(); // double klik sudah pasti: langsung jalankan
+                } else {
+                    handler.postDelayed(selesaiTekan, JENDELA_DOUBLE_MS); // tunggu, mungkin ada tekan kedua
+                }
             });
         }
     };

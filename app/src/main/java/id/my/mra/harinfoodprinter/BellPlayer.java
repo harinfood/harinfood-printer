@@ -17,7 +17,7 @@ import java.net.URL;
  * Berkas MP3 diunduh sekali dari URL musik pembuka lalu disimpan di cache; kalau belum ada, dipakai nada notifikasi bawaan HP.
  * Setelah musik selesai, jam saat ini diucapkan lewat TTS (Bahasa Indonesia).
  * Menekan tombol lagi saat musik masih berbunyi = menghentikan musik (tanpa ucapan jam).
- * Mode "jam saja" (pengaturan bell_speak = "jam"): tanpa MP3, langsung mengucapkan jam.
+ * Tekan 1x: MP3 lalu jam. Tekan 2x (double klik): jam saja, tanpa MP3.
  */
 public class BellPlayer {
     private static final Object LOCK = new Object();
@@ -25,8 +25,13 @@ public class BellPlayer {
     private static Context volCtx; // dipakai untuk mengembalikan volume saat musik berhenti
 
     public static void play(final Context ctx) {
+        onButton(ctx, false);
+    }
+
+    /** jamSaja = true (tekan 2x): hanya ucapkan jam. false (tekan 1x): MP3 lalu jam. */
+    public static void onButton(final Context ctx, final boolean jamSaja) {
         final Context app = ctx.getApplicationContext();
-        new Thread(() -> playBlocking(app)).start();
+        new Thread(() -> playBlocking(app, jamSaja)).start();
     }
 
     public static void stop() {
@@ -43,11 +48,6 @@ public class BellPlayer {
     }
 
     private static File musicFile(Context c) { return new File(c.getCacheDir(), "bell_music.mp3"); }
-
-    /** true = mode "jam saja" (tanpa MP3). Default: MP3 + jam. */
-    private static boolean modeJamSaja(Context c) {
-        return "jam".equals(c.getSharedPreferences("harin", Context.MODE_PRIVATE).getString("bell_speak", "mp3_jam"));
-    }
 
     private static void releaseLocked() {
         if (player != null) {
@@ -82,11 +82,11 @@ public class BellPlayer {
         }
     }
 
-    private static void playBlocking(Context c) {
+    private static void playBlocking(Context c, boolean jamSaja) {
         synchronized (LOCK) {
             volCtx = c.getApplicationContext();
             if (player != null) { releaseLocked(); return; } // ditekan lagi saat berbunyi -> berhenti
-            if (modeJamSaja(c)) { JamBicara.speakNow(volCtx); return; } // mode "jam saja": langsung ucapkan jam
+            if (jamSaja) { JamBicara.speakNow(volCtx); return; } // tekan 2x: hanya jam
             try {
                 MediaPlayer mp = new MediaPlayer();
                 mp.setAudioAttributes(new AudioAttributes.Builder()
