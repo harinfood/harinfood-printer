@@ -43,8 +43,8 @@ public class BellService extends Service {
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     // Tekan 1x = MP3 + jam; tekan 2x (double klik) = jam saja
-    private static final long PANTULAN_MS = 250L;      // abaikan pantulan tombol
-    private static final long JENDELA_DOUBLE_MS = 450L; // selang maksimum untuk dianggap double klik
+    private static final long PANTULAN_MS = 60L;        // abaikan pantulan tombol (cukup pendek agar double klik cepat tetap terbaca)
+    private static final long JENDELA_DOUBLE_MS = 500L; // selang maksimum untuk dianggap double klik
     private int jumlahTekan = 0;
     private final Runnable selesaiTekan = () -> {
         int n = jumlahTekan;
