@@ -294,6 +294,12 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public void setTripleMusicUrl(String url) {
+            prefs().edit().putString("bell_triple_music_url", url == null ? "" : url).apply();
+            BellPlayer.invalidateTriple(getApplicationContext());
+        }
+
+        @JavascriptInterface
         public void test() { BellPlayer.play(getApplicationContext()); }
     }
 

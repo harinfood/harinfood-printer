@@ -17,7 +17,7 @@ import java.net.URL;
  * Berkas MP3 diunduh sekali dari URL musik pembuka lalu disimpan di cache; kalau belum ada, dipakai nada notifikasi bawaan HP.
  * Setelah musik selesai, jam saat ini diucapkan lewat TTS (Bahasa Indonesia).
  * Menekan tombol lagi saat musik masih berbunyi = menghentikan musik (tanpa ucapan jam).
- * Tekan 1x: MP3 lalu jam. Tekan 2x (double klik): jam saja, tanpa MP3.
+ * Tekan 1x: MP3 lalu jam. Tekan 2x: jam saja. Tekan 3x: MP3 khusus tekan 3x.
  */
 public class BellPlayer {
     private static final Object LOCK = new Object();
@@ -25,13 +25,16 @@ public class BellPlayer {
     private static Context volCtx; // dipakai untuk mengembalikan volume saat musik berhenti
 
     public static void play(final Context ctx) {
-        onButton(ctx, false);
+        onButton(ctx, 1);
     }
 
-    /** jamSaja = true (tekan 2x): hanya ucapkan jam. false (tekan 1x): MP3 lalu jam. */
-    public static void onButton(final Context ctx, final boolean jamSaja) {
+    /**
+     * mode 1 (tekan 1x): MP3 bel lalu jam. mode 2 (tekan 2x): hanya jam.
+     * mode 3 (tekan 3x): MP3 khusus tekan 3x (bila belum diatur, memakai mode 1).
+     */
+    public static void onButton(final Context ctx, final int mode) {
         final Context app = ctx.getApplicationContext();
-        new Thread(() -> playBlocking(app, jamSaja)).start();
+        new Thread(() -> playBlocking(app, mode)).start();
     }
 
     public static void stop() {
@@ -47,7 +50,13 @@ public class BellPlayer {
         try { musicFile(ctx).delete(); } catch (Exception ignored) {}
     }
 
+    /** Hapus cache MP3 khusus tekan 3x (dipanggil saat MP3 khusus diganti). */
+    public static void invalidateTriple(Context ctx) {
+        try { tripleFile(ctx).delete(); } catch (Exception ignored) {}
+    }
+
     private static File musicFile(Context c) { return new File(c.getCacheDir(), "bell_music.mp3"); }
+    private static File tripleFile(Context c) { return new File(c.getCacheDir(), "bell_triple.mp3"); }
 
     private static void releaseLocked() {
         if (player != null) {
@@ -58,10 +67,9 @@ public class BellPlayer {
         }
     }
 
-    private static boolean ensureDownloaded(Context c) {
-        File f = musicFile(c);
+    private static boolean ensureDownloaded(Context c, String prefKey, File f) {
         if (f.exists() && f.length() > 1000) return true;
-        String url = c.getSharedPreferences("harin", Context.MODE_PRIVATE).getString("bell_music_url", "");
+        String url = c.getSharedPreferences("harin", Context.MODE_PRIVATE).getString(prefKey, "");
         if (url == null || url.isEmpty()) return false;
         try {
             HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
@@ -82,11 +90,14 @@ public class BellPlayer {
         }
     }
 
-    private static void playBlocking(Context c, boolean jamSaja) {
+    private static void playBlocking(Context c, int mode) {
         synchronized (LOCK) {
             volCtx = c.getApplicationContext();
             if (player != null) { releaseLocked(); return; } // ditekan lagi saat berbunyi -> berhenti
-            if (jamSaja) { JamBicara.speakNow(volCtx); return; } // tekan 2x: hanya jam
+            if (mode == 2) { JamBicara.speakNow(volCtx); return; } // tekan 2x: hanya jam
+            // tekan 3x: MP3 khusus; kalau belum diatur, memakai MP3 bel biasa + jam
+            final boolean pakaiTriple = mode == 3 && ensureDownloaded(c, "bell_triple_music_url", tripleFile(c));
+            final boolean sebutJam = !pakaiTriple;
             try {
                 MediaPlayer mp = new MediaPlayer();
                 mp.setAudioAttributes(new AudioAttributes.Builder()
@@ -94,10 +105,11 @@ public class BellPlayer {
                     .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                     .build());
                 mp.setWakeMode(c, PowerManager.PARTIAL_WAKE_LOCK); // tetap berbunyi walau layar mati
-                if (ensureDownloaded(c)) mp.setDataSource(musicFile(c).getAbsolutePath());
+                if (pakaiTriple) mp.setDataSource(tripleFile(c).getAbsolutePath());
+                else if (ensureDownloaded(c, "bell_music_url", musicFile(c))) mp.setDataSource(musicFile(c).getAbsolutePath());
                 else mp.setDataSource(c, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION));
-                mp.setOnCompletionListener(m -> { synchronized (LOCK) { if (player == m) { JamBicara.speakNow(volCtx); releaseLocked(); } } });
-                mp.setOnErrorListener((m, what, extra) -> { synchronized (LOCK) { if (player == m) { JamBicara.speakNow(volCtx); releaseLocked(); } } return true; });
+                mp.setOnCompletionListener(m -> { synchronized (LOCK) { if (player == m) { if (sebutJam) JamBicara.speakNow(volCtx); releaseLocked(); } } });
+                mp.setOnErrorListener((m, what, extra) -> { synchronized (LOCK) { if (player == m) { if (sebutJam) JamBicara.speakNow(volCtx); releaseLocked(); } } return true; });
                 mp.prepare();
                 mp.start();
                 player = mp;

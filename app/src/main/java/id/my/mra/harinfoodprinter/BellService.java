@@ -49,9 +49,11 @@ public class BellService extends Service {
     private final Runnable selesaiTekan = () -> {
         int n = jumlahTekan;
         jumlahTekan = 0;
-        boolean jamSaja = n >= 2;
-        setStatus(jamSaja ? "Tombol ditekan 2x → jam saja" : "Tombol ditekan 1x → MP3 + jam");
-        BellPlayer.onButton(getApplicationContext(), jamSaja);
+        int mode = n >= 3 ? 3 : (n == 2 ? 2 : 1);
+        if (mode == 3) setStatus("Tombol ditekan 3x → MP3 khusus");
+        else if (mode == 2) setStatus("Tombol ditekan 2x → jam saja");
+        else setStatus("Tombol ditekan 1x → MP3 + jam");
+        BellPlayer.onButton(getApplicationContext(), mode);
     };
     private BluetoothGatt gatt;
     private String addr = "";
@@ -264,8 +266,8 @@ public class BellService extends Service {
             handler.post(() -> {
                 jumlahTekan++;
                 handler.removeCallbacks(selesaiTekan);
-                if (jumlahTekan >= 2) {
-                    selesaiTekan.run(); // double klik sudah pasti: langsung jalankan
+                if (jumlahTekan >= 3) {
+                    selesaiTekan.run(); // tiga kali tekan sudah pasti: langsung jalankan
                 } else {
                     handler.postDelayed(selesaiTekan, JENDELA_DOUBLE_MS); // tunggu, mungkin ada tekan kedua
                 }
