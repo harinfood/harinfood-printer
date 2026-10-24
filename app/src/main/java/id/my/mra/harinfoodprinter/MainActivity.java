@@ -257,6 +257,7 @@ public class MainActivity extends Activity {
                 o.put("name", p.getString("bell_name", ""));
                 o.put("status", BellService.status);
                 o.put("speak", p.getString("bell_speak", "mp3_jam"));
+                o.put("pretext", p.getString("bell_pre_text", ""));
                 o.put("running", BellService.running);
                 return o.toString();
             } catch (Exception e) { return "{}"; }
@@ -291,6 +292,11 @@ public class MainActivity extends Activity {
         public void setSpeakMode(String mode) {
             // "mp3_jam" = MP3 lalu jam; "jam" = jam saja
             prefs().edit().putString("bell_speak", "jam".equals(mode) ? "jam" : "mp3_jam").apply();
+        }
+
+        @JavascriptInterface
+        public void setPreText(String text) {
+            prefs().edit().putString("bell_pre_text", text == null ? "" : text).apply();
         }
 
         @JavascriptInterface

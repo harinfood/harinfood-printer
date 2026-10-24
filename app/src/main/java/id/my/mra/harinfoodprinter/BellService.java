@@ -42,7 +42,7 @@ public class BellService extends Service {
 
     private final Handler handler = new Handler(Looper.getMainLooper());
 
-    // Tekan 1x = MP3 + jam; tekan 2x (double klik) = jam saja
+    // Tekan 1x = MP3 + jam; tekan 2x = teks lalu MP3 khusus; tekan 3x = jam saja
     private static final long PANTULAN_MS = 60L;        // abaikan pantulan tombol (cukup pendek agar double klik cepat tetap terbaca)
     private static final long JENDELA_DOUBLE_MS = 500L; // selang maksimum untuk dianggap double klik
     private int jumlahTekan = 0;
@@ -50,8 +50,8 @@ public class BellService extends Service {
         int n = jumlahTekan;
         jumlahTekan = 0;
         int mode = n >= 3 ? 3 : (n == 2 ? 2 : 1);
-        if (mode == 3) setStatus("Tombol ditekan 3x → MP3 khusus");
-        else if (mode == 2) setStatus("Tombol ditekan 2x → jam saja");
+        if (mode == 3) setStatus("Tombol ditekan 3x → jam saja");
+        else if (mode == 2) setStatus("Tombol ditekan 2x → teks lalu MP3 khusus");
         else setStatus("Tombol ditekan 1x → MP3 + jam");
         BellPlayer.onButton(getApplicationContext(), mode);
     };

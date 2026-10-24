@@ -17,20 +17,23 @@ import java.net.URL;
  * Berkas MP3 diunduh sekali dari URL musik pembuka lalu disimpan di cache; kalau belum ada, dipakai nada notifikasi bawaan HP.
  * Setelah musik selesai, jam saat ini diucapkan lewat TTS (Bahasa Indonesia).
  * Menekan tombol lagi saat musik masih berbunyi = menghentikan musik (tanpa ucapan jam).
- * Tekan 1x: MP3 lalu jam. Tekan 2x: jam saja. Tekan 3x: MP3 khusus tekan 3x.
+ * Tekan 1x: MP3 bel lalu jam. Tekan 2x: teks dari pengaturan dibacakan, lalu MP3 khusus tekan 2x.
+ * Tekan 3x: jam saja.
  */
 public class BellPlayer {
     private static final Object LOCK = new Object();
     private static MediaPlayer player;
     private static Context volCtx; // dipakai untuk mengembalikan volume saat musik berhenti
+    private static boolean sedangUcap = false; // true saat teks sebelum MP3 sedang dibacakan
 
     public static void play(final Context ctx) {
         onButton(ctx, 1);
     }
 
     /**
-     * mode 1 (tekan 1x): MP3 bel lalu jam. mode 2 (tekan 2x): hanya jam.
-     * mode 3 (tekan 3x): MP3 khusus tekan 3x (bila belum diatur, memakai mode 1).
+     * mode 1 (tekan 1x): MP3 bel lalu jam.
+     * mode 2 (tekan 2x): teks pengaturan dibacakan, lalu MP3 khusus tekan 2x (bila belum diatur, memakai MP3 bel + jam).
+     * mode 3 (tekan 3x): hanya jam.
      */
     public static void onButton(final Context ctx, final int mode) {
         final Context app = ctx.getApplicationContext();
@@ -90,13 +93,38 @@ public class BellPlayer {
         }
     }
 
+    /** Teks yang dibacakan sebelum MP3 khusus tekan 2x (diatur dari web). */
+    private static String teksSebelum(Context c) {
+        String t = c.getSharedPreferences("harin", Context.MODE_PRIVATE).getString("bell_pre_text", "");
+        return t == null ? "" : t.trim();
+    }
+
     private static void playBlocking(Context c, int mode) {
         synchronized (LOCK) {
             volCtx = c.getApplicationContext();
             if (player != null) { releaseLocked(); return; } // ditekan lagi saat berbunyi -> berhenti
-            if (mode == 2) { JamBicara.speakNow(volCtx); return; } // tekan 2x: hanya jam
-            // tekan 3x: MP3 khusus; kalau belum diatur, memakai MP3 bel biasa + jam
-            final boolean pakaiTriple = mode == 3 && ensureDownloaded(c, "bell_triple_music_url", tripleFile(c));
+            if (sedangUcap) return;                         // masih membacakan teks, tunggu sebentar
+            if (mode == 3) { JamBicara.speakNow(volCtx); return; } // tekan 3x: hanya jam
+            if (mode == 2) {                                // tekan 2x: teks dulu, lalu MP3 khusus
+                String teks = teksSebelum(c);
+                if (!teks.isEmpty()) {
+                    sedangUcap = true;
+                    final Context app = volCtx;
+                    JamBicara.speak(app, teks, () -> mulaiMp3(app, 2));
+                    return;
+                }
+            }
+            mulaiMp3(c, mode);
+        }
+    }
+
+    /** Memutar MP3: MP3 khusus (tekan 2x) atau MP3 bel biasa (lalu jam). Dipanggil langsung atau setelah teks selesai. */
+    private static void mulaiMp3(Context c, int mode) {
+        synchronized (LOCK) {
+            sedangUcap = false;
+            if (player != null) return;
+            // tekan 2x: MP3 khusus; kalau belum diatur, memakai MP3 bel biasa + jam
+            final boolean pakaiTriple = mode == 2 && ensureDownloaded(c, "bell_triple_music_url", tripleFile(c));
             final boolean sebutJam = !pakaiTriple;
             try {
                 MediaPlayer mp = new MediaPlayer();
